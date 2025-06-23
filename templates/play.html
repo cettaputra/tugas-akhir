@@ -93,7 +93,7 @@
     <audio id="audio" src="{{ audio_url }}" autoplay hidden></audio>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
+<script>
     let painting = false;
     let timer = 30;
     let intervalId = null;
@@ -106,9 +106,11 @@
         const timerSpan = document.getElementById("timer");
         const resultText = document.getElementById("result");
 
+        // Bersihkan canvas
         ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Desktop events
         canvas.onmousedown = () => {
             painting = true;
             if (!drawingStarted) {
@@ -121,6 +123,7 @@
         canvas.onmouseleave = () => painting = false;
         canvas.onmousemove = drawMouse;
 
+        // Mobile events
         canvas.addEventListener("touchstart", (e) => {
             painting = true;
             if (!drawingStarted) {
@@ -130,16 +133,20 @@
             startPrediction();
             drawTouch(e);
             e.preventDefault();
-        });
+        }, { passive: false });
 
         canvas.addEventListener("touchmove", (e) => {
             if (!painting) return;
             drawTouch(e);
             e.preventDefault();
-        });
+        }, { passive: false });
 
         canvas.addEventListener("touchend", () => painting = false);
         canvas.addEventListener("touchcancel", () => painting = false);
+
+        // Prevent scroll on mobile
+        canvas.addEventListener("touchstart", e => e.preventDefault(), { passive: false });
+        canvas.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
 
         function drawMouse(e) {
             if (!painting) return;
@@ -220,23 +227,7 @@
         }
     };
 </script>
-<script>
-    
-    window.onload = () => {
-        painting = false;
-        timer = 30;
-        intervalId = null;
-        countdown = null;
-        drawingStarted = false;
 
-        // Bersihkan canvas
-        clearCanvas();
-
-        // Cegah scroll saat sentuhan di canvas (penting untuk iOS/Android)
-        canvas.addEventListener("touchstart", e => e.preventDefault(), { passive: false });
-        canvas.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
-    };
-</script>
 
 </body>
 </html>
