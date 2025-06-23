@@ -220,6 +220,23 @@
         }
     };
 </script>
+<script>
+    
+    window.onload = () => {
+        painting = false;
+        timer = 30;
+        intervalId = null;
+        countdown = null;
+        drawingStarted = false;
+
+        // Bersihkan canvas
+        clearCanvas();
+
+        // Cegah scroll saat sentuhan di canvas (penting untuk iOS/Android)
+        canvas.addEventListener("touchstart", e => e.preventDefault(), { passive: false });
+        canvas.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+    };
+</script>
 
 </body>
 </html>
