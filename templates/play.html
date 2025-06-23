@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Putaran Gambar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Shadows+Into+Light&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
+    <style>
+        .caveat-brush-regular { font-family: "Caveat Brush", cursive; }
+        .courier-prime-regular { font-family: "Courier Prime", monospace; }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: sans-serif;
+            background-color: #bfdbfe;
+            text-align: center;
+            margin: 0;
+        }
+        canvas {
+            border: 2px solid black;
+            cursor: crosshair;
+            background-color: white;
+        }
+        #result {
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 18px;
+        }
+        button {
+            width: 150px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            background: #e62222;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.15);
+        }
+        button .text {
+            transform: translateX(35px);
+            color: white;
+            font-weight: bold;
+        }
+        button .icon {
+            position: absolute;
+            border-left: 1px solid #c41b1b;
+            transform: translateX(110px);
+            height: 40px;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover {
+            background: #ff3636;
+        }
+        button:hover .text {
+            color: transparent;
+        }
+        button:hover .icon {
+            width: 150px;
+            border-left: none;
+            transform: translateX(0);
+        }
+        button:focus { outline: none; }
+        button:active .icon svg { transform: scale(0.8); }
+    </style>
+</head>
+
+<body>
+    <h2 class="caveat-brush-regular text-5xl mb-4">
+        Gambarlah: <span id="target-label">{{ label }}</span>
+    </h2>
+    <p class="courier-prime-regular mb-4">
+        Waktu tersisa: <span id="timer">30</span> detik
+    </p>
+    <canvas id="canvas" width="280" height="280"></canvas><br />
+    <button onclick="clearCanvas()" class="rounded">
+        <span class="text">Hapus</span><span class="icon">
+            <img src="/static/img/eraser.png" alt="Eraser Icon" class="w-6 h-6" />
+        </span>
+    </button>
+
+    <h3 id="result"></h3>
+    <audio id="audio" src="{{ audio_url }}" autoplay hidden></audio>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const timerSpan = document.getElementById("timer");
+    const resultText = document.getElementById("result");
+
+    // ✅ Reset semua variabel saat halaman dimuat ulang
+    let painting = false;
+    let timer = 30;
+    let intervalId = null;
+    let countdown = null;
+    let drawingStarted = false;
+
+    // Reset canvas
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Desktop drawing
+    canvas.onmousedown = () => {
+        painting = true;
+        if (!drawingStarted) {
+            drawingStarted = true;
+            startTimer();
+        }
+        startPrediction();
+    };
+    canvas.onmouseup = () => painting = false;
+    canvas.onmouseleave = () => painting = false;
+    canvas.onmousemove = drawMouse;
+
+    function drawMouse(e) {
+        if (!painting) return;
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(e.offsetX, e.offsetY, 8, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Mobile drawing
+    canvas.addEventListener("touchstart", (e) => {
+        painting = true;
+        if (!drawingStarted) {
+            drawingStarted = true;
+            startTimer();
+        }
+        startPrediction();
+        drawTouch(e);
+        e.preventDefault();
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+        if (!painting) return;
+        drawTouch(e);
+        e.preventDefault();
+    });
+
+    canvas.addEventListener("touchend", () => painting = false);
+    canvas.addEventListener("touchcancel", () => painting = false);
+
+    function drawTouch(e) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        ctx.fillStyle = "black";
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    function clearCanvas() {
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        resultText.innerText = "";
+    }
+
+    function getCanvasImage() {
+        return canvas.toDataURL();
+    }
+
+    function startPrediction() {
+        if (intervalId) return;
+        intervalId = setInterval(() => {
+            $.ajax({
+                url: "/predict_live",
+                type: "POST",
+                data: JSON.stringify({ image: getCanvasImage() }),
+                contentType: "application/json",
+                dataType: "json",
+                success: function (response) {
+                    if (response.correct) {
+                        clearInterval(intervalId);
+                        clearInterval(countdown);
+                        resultText.innerText = "✅ Benar! Ini adalah " + response.prediction;
+                        setTimeout(() => {
+                            window.location.href = response.redirect;
+                        }, 1000);
+                    } else {
+                        resultText.innerText = "❌ Tebakan: " + response.prediction;
+                    }
+                }
+            });
+        }, 1000);
+    }
+
+    function startTimer() {
+        countdown = setInterval(() => {
+            timer--;
+            timerSpan.innerText = timer;
+            if (timer <= 0) {
+                clearInterval(countdown);
+                clearInterval(intervalId);
+                $.ajax({
+                    url: "/predict_live",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify({ timeout: true }),
+                    success: function (response) {
+                        if (response.redirect) {
+                            window.location.href = response.redirect;
+                        }
+                    }
+                });
+            }
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>
+
+
