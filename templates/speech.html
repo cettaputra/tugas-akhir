@@ -30,6 +30,7 @@
             margin-top: 20px;
             font-size: 18px;
             color: #2d89ef;
+            white-space: pre-line;
         }
     </style>
 </head>
@@ -70,10 +71,17 @@
         '9': 'sembilan'
     };
 
-    // Fungsi konversi digit (misalnya "6") ke "enam"
     function konversiDigitKeKata(text) {
-        return digitToWordMap[text] || text;
+        if (digitToWordMap[text]) {
+            return digitToWordMap[text];
+        }
+        return text;
     }
+
+    // Ambil mic permission (debug)
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => console.log("🎤 Microphone access granted"))
+        .catch(err => console.error("❌ Microphone denied:", err));
 
     if (!('webkitSpeechRecognition' in window)) {
         statusEl.innerText = "Browser Anda tidak mendukung Speech Recognition.";
@@ -95,7 +103,7 @@
             let result = event.results[0][0].transcript.toLowerCase().trim();
             console.log("Transkrip asli:", result);
 
-            // Konversi digit menjadi kata jika perlu
+            // Ubah jika berupa angka
             if (result.length === 1 && result in digitToWordMap) {
                 result = konversiDigitKeKata(result);
             }
@@ -103,7 +111,7 @@
             console.log("Setelah konversi:", result);
             statusEl.innerText = `✅ Kamu mengucapkan: "${result}"`;
 
-            if (result === label) {
+            if (result.includes(label)) {
                 setTimeout(() => {
                     fetch("/next_speech", {
                         method: "POST"
@@ -117,14 +125,10 @@
             }
         };
 
-        // Mulai setelah audio TTS selesai
         document.getElementById("tts").addEventListener("ended", () => {
             recognition.start();
         });
     }
-</script>
-
-
-
+    </script>
 </body>
 </html>
