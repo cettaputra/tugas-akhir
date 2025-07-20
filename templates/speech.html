@@ -26,41 +26,76 @@
             font-weight: bold;
             color: #444;
         }
-        button {
-            margin-top: 25px;
-            padding: 12px 25px;
+        .status {
+            margin-top: 20px;
             font-size: 18px;
-            border: none;
-            background-color: #2d89ef;
-            color: white;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #1b5cb8;
+            color: #2d89ef;
         }
     </style>
 </head>
 <body>
     <h1>Yuk, Belajar Mengucapkan!</h1>
-    
+
     {% if image and label %}
         <div class="image-container">
             <img src="{{ image }}" alt="Gambar anak">
         </div>
-        <div class="label">Ini adalah: {{ label }}</div>
+        <div class="label" id="label-text">Ini adalah: {{ label }}</div>
 
-        <!-- Audio dari Google TTS -->
         <audio id="tts" autoplay>
             <source src="{{ audio_url }}" type="audio/mpeg">
         </audio>
 
-        <form method="POST" action="{{ url_for('next_speech') }}">
-            <button type="submit">Saya sudah mengucapkan</button>
-        </form>
+        <p class="status" id="status">Silakan ucapkan: <strong>{{ label }}</strong></p>
     {% else %}
         <p>Tidak ada gambar yang ditampilkan.</p>
         <a href="{{ url_for('index') }}">Kembali ke Halaman Utama</a>
     {% endif %}
+
+    <script>
+        const label = "{{ label|lower }}";
+        const statusEl = document.getElementById("status");
+
+        // Cek apakah browser support
+        if (!('webkitSpeechRecognition' in window)) {
+            statusEl.innerText = "Browser Anda tidak mendukung Speech Recognition.";
+        } else {
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = "id-ID";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                statusEl.innerText = "🎙️ Dengarkan... silakan ucapkan: " + label;
+            };
+
+            recognition.onerror = (event) => {
+                statusEl.innerText = "❌ Terjadi kesalahan: " + event.error;
+            };
+
+            recognition.onresult = (event) => {
+                const result = event.results[0][0].transcript.toLowerCase();
+                statusEl.innerText = `✅ Kamu mengucapkan: "${result}"`;
+
+                if (result.includes(label)) {
+                    setTimeout(() => {
+                        fetch("/next_speech", {
+                            method: "POST"
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    }, 1500);
+                } else {
+                    statusEl.innerText += "\n❌ Coba lagi...";
+                    setTimeout(() => recognition.start(), 2000); // ulangi lagi
+                }
+            };
+
+            // Start pertama kali setelah audio selesai
+            document.getElementById("tts").addEventListener("ended", () => {
+                recognition.start();
+            });
+        }
+    </script>
 </body>
 </html>
