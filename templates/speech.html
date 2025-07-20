@@ -53,49 +53,78 @@
     {% endif %}
 
     <script>
-        const label = "{{ label|lower }}";
-        const statusEl = document.getElementById("status");
+    const label = "{{ label|lower }}";
+    const statusEl = document.getElementById("status");
 
-        // Cek apakah browser support
-        if (!('webkitSpeechRecognition' in window)) {
-            statusEl.innerText = "Browser Anda tidak mendukung Speech Recognition.";
-        } else {
-            const recognition = new webkitSpeechRecognition();
-            recognition.lang = "id-ID";
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
+    // Mapping angka -> kata
+    const digitToWordMap = {
+        '0': 'nol',
+        '1': 'satu',
+        '2': 'dua',
+        '3': 'tiga',
+        '4': 'empat',
+        '5': 'lima',
+        '6': 'enam',
+        '7': 'tujuh',
+        '8': 'delapan',
+        '9': 'sembilan'
+    };
 
-            recognition.onstart = () => {
-                statusEl.innerText = "🎙️ Dengarkan... silakan ucapkan: " + label;
-            };
+    // Fungsi konversi digit (misalnya "6") ke "enam"
+    function konversiDigitKeKata(text) {
+        return digitToWordMap[text] || text;
+    }
 
-            recognition.onerror = (event) => {
-                statusEl.innerText = "❌ Terjadi kesalahan: " + event.error;
-            };
+    if (!('webkitSpeechRecognition' in window)) {
+        statusEl.innerText = "Browser Anda tidak mendukung Speech Recognition.";
+    } else {
+        const recognition = new webkitSpeechRecognition();
+        recognition.lang = "id-ID";
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
 
-            recognition.onresult = (event) => {
-                const result = event.results[0][0].transcript.toLowerCase();
-                statusEl.innerText = `✅ Kamu mengucapkan: "${result}"`;
+        recognition.onstart = () => {
+            statusEl.innerText = "🎙️ Dengarkan... silakan ucapkan: " + label;
+        };
 
-                if (result.includes(label)) {
-                    setTimeout(() => {
-                        fetch("/next_speech", {
-                            method: "POST"
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    }, 1500);
-                } else {
-                    statusEl.innerText += "\n❌ Coba lagi...";
-                    setTimeout(() => recognition.start(), 2000); // ulangi lagi
-                }
-            };
+        recognition.onerror = (event) => {
+            statusEl.innerText = "❌ Terjadi kesalahan: " + event.error;
+        };
 
-            // Start pertama kali setelah audio selesai
-            document.getElementById("tts").addEventListener("ended", () => {
-                recognition.start();
-            });
-        }
-    </script>
+        recognition.onresult = (event) => {
+            let result = event.results[0][0].transcript.toLowerCase().trim();
+            console.log("Transkrip asli:", result);
+
+            // Konversi digit menjadi kata jika perlu
+            if (result.length === 1 && result in digitToWordMap) {
+                result = konversiDigitKeKata(result);
+            }
+
+            console.log("Setelah konversi:", result);
+            statusEl.innerText = `✅ Kamu mengucapkan: "${result}"`;
+
+            if (result === label) {
+                setTimeout(() => {
+                    fetch("/next_speech", {
+                        method: "POST"
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                }, 1500);
+            } else {
+                statusEl.innerText += "\n❌ Coba lagi...";
+                setTimeout(() => recognition.start(), 2000);
+            }
+        };
+
+        // Mulai setelah audio TTS selesai
+        document.getElementById("tts").addEventListener("ended", () => {
+            recognition.start();
+        });
+    }
+</script>
+
+
+
 </body>
 </html>
