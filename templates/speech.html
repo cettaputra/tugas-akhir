@@ -71,17 +71,10 @@
         '9': 'sembilan'
     };
 
+    // Fungsi konversi digit ke kata jika perlu
     function konversiDigitKeKata(text) {
-        if (digitToWordMap[text]) {
-            return digitToWordMap[text];
-        }
-        return text;
+        return digitToWordMap[text] || text;
     }
-
-    // Ambil mic permission (debug)
-    navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => console.log("🎤 Microphone access granted"))
-        .catch(err => console.error("❌ Microphone denied:", err));
 
     if (!('webkitSpeechRecognition' in window)) {
         statusEl.innerText = "Browser Anda tidak mendukung Speech Recognition.";
@@ -91,7 +84,10 @@
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
 
+        let hasilDidapat = false;
+
         recognition.onstart = () => {
+            hasilDidapat = false;
             statusEl.innerText = "🎙️ Dengarkan... silakan ucapkan: " + label;
         };
 
@@ -100,10 +96,10 @@
         };
 
         recognition.onresult = (event) => {
+            hasilDidapat = true;
             let result = event.results[0][0].transcript.toLowerCase().trim();
             console.log("Transkrip asli:", result);
 
-            // Ubah jika berupa angka
             if (result.length === 1 && result in digitToWordMap) {
                 result = konversiDigitKeKata(result);
             }
@@ -111,13 +107,10 @@
             console.log("Setelah konversi:", result);
             statusEl.innerText = `✅ Kamu mengucapkan: "${result}"`;
 
-            if (result.includes(label)) {
+            if (result === label) {
                 setTimeout(() => {
-                    fetch("/next_speech", {
-                        method: "POST"
-                    }).then(() => {
-                        window.location.reload();
-                    });
+                    fetch("/next_speech", { method: "POST" })
+                        .then(() => window.location.reload());
                 }, 1500);
             } else {
                 statusEl.innerText += "\n❌ Coba lagi...";
@@ -125,10 +118,20 @@
             }
         };
 
+        recognition.onend = () => {
+            if (!hasilDidapat) {
+                // Tidak ada hasil, ulangi
+                statusEl.innerText = "🔄 Tidak terdengar, ulangi...";
+                setTimeout(() => recognition.start(), 2000);
+            }
+        };
+
+        // Mulai setelah TTS selesai
         document.getElementById("tts").addEventListener("ended", () => {
             recognition.start();
         });
     }
-    </script>
+</script>
+
 </body>
 </html>
