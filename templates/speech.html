@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Belajar Mengucapkan</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background-color: #fdfdfd;
+            padding: 20px;
+        }
+        .image-container {
+            margin-top: 20px;
+        }
+        img {
+            width: 300px;
+            height: auto;
+            border-radius: 10px;
+            border: 2px solid #ccc;
+        }
+        .label {
+            font-size: 24px;
+            margin-top: 15px;
+            font-weight: bold;
+            color: #444;
+        }
+        button {
+            margin-top: 25px;
+            padding: 12px 25px;
+            font-size: 18px;
+            border: none;
+            background-color: #2d89ef;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1b5cb8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Yuk, Belajar Mengucapkan!</h1>
+    
+    {% if image and label %}
+        <div class="image-container">
+            <img src="{{ image }}" alt="Gambar anak">
+        </div>
+        <div class="label">Ini adalah: {{ label }}</div>
+
+        <!-- Audio dari Google TTS -->
+        <audio id="tts" autoplay>
+            <source src="{{ audio_url }}" type="audio/mpeg">
+        </audio>
+
+        <form method="POST" action="{{ url_for('next_speech') }}">
+            <button type="submit">Saya sudah mengucapkan</button>
+        </form>
+    {% else %}
+        <p>Tidak ada gambar yang ditampilkan.</p>
+        <a href="{{ url_for('index') }}">Kembali ke Halaman Utama</a>
+    {% endif %}
+</body>
+</html>

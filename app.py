@@ -152,3 +152,30 @@ def result():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
+
+@app.route('/speech', methods=['GET', 'POST'])
+def speech():
+    current = session.get('speech_index', 0)
+    drawn_images = session.get('drawn_images', [])
+
+    if current >= len(drawn_images):
+        return redirect(url_for('index'))  # selesai semua
+
+    item = drawn_images[current]
+    label = item['label']
+    image = item['image']
+
+    # Generate audio TTS
+    tts = gTTS(f"Gambar ini adalah {label}. Yuk, kita ucapkan: {label}", lang='id')
+    audio_path = os.path.join("static", "tts_speech.mp3")
+    tts.save(audio_path)
+    timestamp = datetime.now().timestamp()
+    audio_url = f"/static/tts_speech.mp3?v={timestamp}"
+
+    return render_template('speech.html', image=image, label=label, audio_url=audio_url)
+
+@app.route('/next_speech', methods=['POST'])
+def next_speech():
+    session['speech_index'] = session.get('speech_index', 0) + 1
+    return redirect(url_for('speech'))
+
